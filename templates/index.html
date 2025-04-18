@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-5">
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
+        <h1 class="text-2xl font-bold mb-6">Image Generator</h1>
+        
+        <!-- Result image container (initially hidden) -->
+        <div id="result-container" class="mb-6 hidden">
+            <div id="error-message" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 hidden"></div>
+            <img id="result-image" class="w-full rounded shadow" alt="Generated Image">
+        </div>
+        
+        <form id="generator-form" action="/generate" method="post">
+            <div class="mb-4">
+                <input type="text" id="prompt" name="prompt" placeholder="Enter your prompt here" 
+                       class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            
+            <div class="mb-4">
+                <div class="flex gap-4">
+                    <div class="w-1/2">
+                        <select id="orientation" name="orientation" 
+                                class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="Landscape">Landscape</option>
+                            <option value="Square">Square</option>
+                            <option value="Portrait">Portrait</option>
+                        </select>
+                    </div>
+                    <div class="w-1/2">
+                        <select id="aspectratio" name="aspectratio" 
+                                class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-right mt-6">
+                <button type="submit" id="generate-btn" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded flex items-center justify-center">
+                    <span>Generate</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            const aspectRatios = {
+                'Landscape': ['16:9', '3:2', '4:3', '5:4'],
+                'Square': ['1:1'],
+                'Portrait': ['9:16', '2:3', '3:4', '4:5']
+            };
+            
+            function updateAspectRatios() {
+                const orientation = $('#orientation').val();
+                const ratios = aspectRatios[orientation] || [];
+                
+                const aspectRatioSelect = $('#aspectratio');
+                aspectRatioSelect.empty();
+                
+                ratios.forEach(function(ratio) {
+                    aspectRatioSelect.append($('<option></option>').val(ratio).text(ratio));
+                });
+            }
+            
+            updateAspectRatios();
+            
+            $('#orientation').change(updateAspectRatios);
+            
+            $('#generator-form').submit(function(e) {
+                e.preventDefault();
+                
+                const generateBtn = $('#generate-btn');
+                generateBtn.prop('disabled', true);
+                generateBtn.html('<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Generating...');
+                
+                $('#error-message').addClass('hidden').text('');
+                
+                $.ajax({
+                    url: '/generate',
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(response) {
+                        generateBtn.prop('disabled', false);
+                        generateBtn.html('Generate');
+                        
+                        $('#result-container').removeClass('hidden');
+                        
+                        if (response.isSuccess) {
+                            $('#result-image').attr('src', 'data:image/png;base64,' + response.data);
+                            $('#result-image').removeClass('hidden');
+                        } else {
+                            $('#error-message').removeClass('hidden').text('Error: ' + response.data);
+                            $('#result-image').addClass('hidden');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        generateBtn.prop('disabled', false);
+                        generateBtn.html('Generate');
+                        
+                        $('#result-container').removeClass('hidden');
+                        $('#error-message').removeClass('hidden').text('Server error occurred. Please try again.');
+                        $('#result-image').addClass('hidden');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
